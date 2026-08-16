@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openg1"
+version = "0.1.0"
+description = "Open-source SDK and visual simulator for Even Realities G1 smart glasses"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["even-realities", "g1", "smart-glasses", "ble", "bluetooth", "hud", "simulator"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: System :: Hardware :: Hardware Drivers",
+]
+# The protocol layer has no dependencies at all. Radios, images and audio are
+# opt-in, so `pip install openg1` stays usable for codec work and CI.
+dependencies = []
+
+[project.optional-dependencies]
+ble = ["bleak>=0.21"]
+images = ["pillow>=10"]
+audio = ["pylc3-core>=0.1"]
+all = ["bleak>=0.21", "pillow>=10", "pylc3-core>=0.1"]
+dev = ["bleak>=0.21", "pillow>=10", "pytest>=7", "pytest-asyncio>=0.23", "pyyaml>=6", "ruff>=0.4"]
+
+[project.scripts]
+openg1 = "openg1.cli:main"
+# The simulator is part of the package, not an extra: it needs nothing beyond
+# the standard library, and being able to see the panel without owning a pair
+# of glasses is the point.
+openg1sim = "openg1sim.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/gabrielevierti/og1sdk"
+Protocol = "https://github.com/gabrielevierti/og1sdk/blob/main/docs/PROTOCOL.md"
+Simulator = "https://github.com/gabrielevierti/og1sdk/blob/main/docs/SIMULATOR.md"
+Issues = "https://github.com/gabrielevierti/og1sdk/issues"
+
+[tool.setuptools.packages.find]
+include = ["openg1*", "openg1sim*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

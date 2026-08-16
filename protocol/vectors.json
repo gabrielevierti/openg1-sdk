@@ -1,0 +1,778 @@
+{
+  "spec_version": "0.1.0",
+  "generator": "tools/gen_vectors.py",
+  "note": "Regenerate with `python3 tools/gen_vectors.py`. Every binding must reproduce every vector byte for byte; see conformance/README.md.",
+  "vectors": [
+    {
+      "kind": "encode",
+      "name": "encode_set_brightness",
+      "command": "SET_BRIGHTNESS",
+      "seq": null,
+      "body": "1e01",
+      "expect": "011e01"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_send_text",
+      "command": "SEND_TEXT",
+      "seq": null,
+      "body": "07020071000001036369616f",
+      "expect": "4e07020071000001036369616f"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_clear_screen",
+      "command": "CLEAR_SCREEN",
+      "seq": null,
+      "body": "",
+      "expect": "18"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_bmp_data",
+      "command": "BMP_DATA",
+      "seq": null,
+      "body": "00001c00000001020304050607",
+      "expect": "1500001c00000001020304050607"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_bmp_end",
+      "command": "BMP_END",
+      "seq": null,
+      "body": "",
+      "expect": "200d0e"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_bmp_crc",
+      "command": "BMP_CRC",
+      "seq": null,
+      "body": "deadbeef",
+      "expect": "16deadbeef"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_display_settings",
+      "command": "SET_DISPLAY_SETTINGS",
+      "seq": 42,
+      "body": "0802010405",
+      "expect": "2609002a0802010405"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_display_settings",
+      "command": "GET_DISPLAY_SETTINGS",
+      "seq": null,
+      "body": "",
+      "expect": "3b"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_brightness",
+      "command": "GET_BRIGHTNESS",
+      "seq": null,
+      "body": "",
+      "expect": "29"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_display_power",
+      "command": "DISPLAY_POWER",
+      "seq": 42,
+      "body": "01",
+      "expect": "3905002a01"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_heartbeat",
+      "command": "HEARTBEAT",
+      "seq": 42,
+      "body": "042a",
+      "expect": "2506002a042a"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_seq_sync",
+      "command": "SEQ_SYNC",
+      "seq": 42,
+      "body": "01",
+      "expect": "2205002a01"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_init",
+      "command": "INIT",
+      "seq": null,
+      "body": "",
+      "expect": "4dfb"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_hard_reset",
+      "command": "HARD_RESET",
+      "seq": null,
+      "body": "",
+      "expect": "2372"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_firmware_info",
+      "command": "GET_FIRMWARE_INFO",
+      "seq": null,
+      "body": "",
+      "expect": "2374"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_uptime",
+      "command": "GET_UPTIME",
+      "seq": null,
+      "body": "",
+      "expect": "37"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_battery",
+      "command": "GET_BATTERY",
+      "seq": null,
+      "body": "",
+      "expect": "2c01"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_device_info",
+      "command": "GET_DEVICE_INFO",
+      "seq": null,
+      "body": "",
+      "expect": "2c02"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_mac_address",
+      "command": "GET_MAC_ADDRESS",
+      "seq": null,
+      "body": "",
+      "expect": "2d"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_glasses_serial",
+      "command": "GET_GLASSES_SERIAL",
+      "seq": null,
+      "body": "",
+      "expect": "33"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_device_serial",
+      "command": "GET_DEVICE_SERIAL",
+      "seq": null,
+      "body": "",
+      "expect": "34"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_esb_channel",
+      "command": "GET_ESB_CHANNEL",
+      "seq": null,
+      "body": "",
+      "expect": "35"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_esb_notify_count",
+      "command": "GET_ESB_NOTIFY_COUNT",
+      "seq": null,
+      "body": "",
+      "expect": "36"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_buried_point",
+      "command": "GET_BURIED_POINT",
+      "seq": null,
+      "body": "",
+      "expect": "3e"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_mic_control",
+      "command": "MIC_CONTROL",
+      "seq": null,
+      "body": "01",
+      "expect": "0e01"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_silent_mode",
+      "command": "SET_SILENT_MODE",
+      "seq": null,
+      "body": "0c",
+      "expect": "030c"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_silent_mode",
+      "command": "GET_SILENT_MODE",
+      "seq": null,
+      "body": "",
+      "expect": "2b"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_headup_angle",
+      "command": "SET_HEADUP_ANGLE",
+      "seq": null,
+      "body": "1e01",
+      "expect": "0b1e01"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_headup_angle",
+      "command": "GET_HEADUP_ANGLE",
+      "seq": null,
+      "body": "",
+      "expect": "32"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_wear_detection",
+      "command": "SET_WEAR_DETECTION",
+      "seq": null,
+      "body": "01",
+      "expect": "2701"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_wear_detection",
+      "command": "GET_WEAR_DETECTION",
+      "seq": null,
+      "body": "",
+      "expect": "3a"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_anti_shake",
+      "command": "GET_ANTI_SHAKE",
+      "seq": null,
+      "body": "",
+      "expect": "2a"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_button_config",
+      "command": "SET_BUTTON_CONFIG",
+      "seq": 42,
+      "body": "0300",
+      "expect": "0806002a0300"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_gesture_config",
+      "command": "SET_GESTURE_CONFIG",
+      "seq": 42,
+      "body": "0505",
+      "expect": "2606002a0505"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_calibration",
+      "command": "CALIBRATION",
+      "seq": 42,
+      "body": "020100",
+      "expect": "1007002a020100"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_language",
+      "command": "SET_LANGUAGE",
+      "seq": 42,
+      "body": "0102",
+      "expect": "3d06002a0102"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_message_mode",
+      "command": "SET_MESSAGE_MODE",
+      "seq": 42,
+      "body": "01",
+      "expect": "3c05002a01"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_ancs_config",
+      "command": "SET_ANCS_CONFIG",
+      "seq": 42,
+      "body": "010203",
+      "expect": "3807002a010203"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_debug_mode",
+      "command": "SET_DEBUG_MODE",
+      "seq": null,
+      "body": "01",
+      "expect": "f401"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_dashboard",
+      "command": "SET_DASHBOARD",
+      "seq": 42,
+      "body": "0140e20100",
+      "expect": "0609002a0140e20100"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_dashboard_lock",
+      "command": "DASHBOARD_LOCK",
+      "seq": 42,
+      "body": "0101",
+      "expect": "5006002a0101"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_quick_note",
+      "command": "SET_QUICK_NOTE",
+      "seq": 42,
+      "body": "03010001",
+      "expect": "1e08002a03010001"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_calendar_event",
+      "command": "SET_CALENDAR_EVENT",
+      "seq": 42,
+      "body": "0102",
+      "expect": "5806002a0102"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_notification_config",
+      "command": "SET_NOTIFICATION_CONFIG",
+      "seq": null,
+      "body": "01007b2263616c6c5f656e61626c65223a747275657d",
+      "expect": "0401007b2263616c6c5f656e61626c65223a747275657d"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_send_notification",
+      "command": "SEND_NOTIFICATION",
+      "seq": null,
+      "body": "02007b227469746c65223a226869227d",
+      "expect": "4b02007b227469746c65223a226869227d"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_clear_notification",
+      "command": "CLEAR_NOTIFICATION",
+      "seq": null,
+      "body": "",
+      "expect": "4c"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_get_whitelist",
+      "command": "GET_WHITELIST",
+      "seq": null,
+      "body": "",
+      "expect": "2e"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_teleprompter",
+      "command": "SET_TELEPROMPTER",
+      "seq": 42,
+      "body": "6c696e65206f6e65",
+      "expect": "090c002a6c696e65206f6e65"
+    },
+    {
+      "kind": "encode",
+      "name": "encode_set_navigation",
+      "command": "SET_NAVIGATION",
+      "seq": 42,
+      "body": "010064",
+      "expect": "0a07002a010064"
+    },
+    {
+      "kind": "decode",
+      "name": "decode_quick_note_request",
+      "note": "framed: opcode 0x1E declares 16 bytes, sequence 0x29",
+      "input": "1e100029030100010003000100010000",
+      "expect": {
+        "opcode": 30,
+        "framed": true,
+        "seq": 41,
+        "payload": "030100010003000100010000",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_button_config_headup_dashboard",
+      "note": "framed: head-up gesture bound to the dashboard",
+      "input": "080600030000",
+      "expect": {
+        "opcode": 8,
+        "framed": true,
+        "seq": 3,
+        "payload": "0000",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_gesture_config_double_tap_none",
+      "note": "framed: 0x26 with subcommand 0x05 is the gesture binding, not geometry",
+      "input": "2606000a0500",
+      "expect": {
+        "opcode": 38,
+        "framed": true,
+        "seq": 10,
+        "payload": "0500",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_display_settings_commit",
+      "note": "framed: 0x26 with subcommand 0x08 is the geometry command",
+      "input": "2608000802010704",
+      "expect": {
+        "opcode": 38,
+        "framed": true,
+        "seq": 8,
+        "payload": "02010704",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_calibration_reset_zero",
+      "note": "framed: five-byte packet, the shortest framed form",
+      "input": "1005000401",
+      "expect": {
+        "opcode": 16,
+        "framed": true,
+        "seq": 4,
+        "payload": "01",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_calibration_step",
+      "note": "framed: seven-byte calibration step",
+      "input": "1007000c020100",
+      "expect": {
+        "opcode": 16,
+        "framed": true,
+        "seq": 12,
+        "payload": "020100",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_calibration_reply_padded",
+      "note": "reply padded to the ATT payload size; the length field is what trims it",
+      "input": "1006000401c90000000000000000000000000000",
+      "expect": {
+        "opcode": 16,
+        "framed": true,
+        "seq": 4,
+        "payload": "01c9",
+        "trailer": "0000000000000000000000000000"
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_display_power_request",
+      "note": "framed request",
+      "input": "3905001c01",
+      "expect": {
+        "opcode": 57,
+        "framed": true,
+        "seq": 28,
+        "payload": "01",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_display_power_reply",
+      "note": "reply appends its result past the declared length",
+      "input": "3905001c0100",
+      "expect": {
+        "opcode": 57,
+        "framed": true,
+        "seq": 28,
+        "payload": "01",
+        "trailer": "00"
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_dashboard_lock_reply",
+      "note": "framed reply, right arm only",
+      "input": "500600000101",
+      "expect": {
+        "opcode": 80,
+        "framed": true,
+        "seq": 0,
+        "payload": "0101",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_language_setting",
+      "note": "framed language setting",
+      "input": "3d0600140102",
+      "expect": {
+        "opcode": 61,
+        "framed": true,
+        "seq": 20,
+        "payload": "0102",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_seq_sync",
+      "note": "opcode 0x22, length 5 \u2014 not 'command 0x22 subcommand 0x05', which is how several published tables read it",
+      "input": "2205000101",
+      "expect": {
+        "opcode": 34,
+        "framed": true,
+        "seq": 1,
+        "payload": "01",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_heartbeat",
+      "note": "opcode 0x25, length 6, heartbeat counter repeated after a 0x04 tag",
+      "input": "2506002a042a",
+      "expect": {
+        "opcode": 37,
+        "framed": true,
+        "seq": 42,
+        "payload": "042a",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_headup_angle_reply",
+      "note": "raw reply, zero padded",
+      "input": "326d0f0100000000000000000000000000000000",
+      "expect": {
+        "opcode": 50,
+        "framed": false,
+        "seq": null,
+        "payload": "6d0f0100000000000000000000000000000000",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_battery_reply_right",
+      "note": "raw battery report: tag 0x66 then percent",
+      "input": "2c6664ef8019010405010405",
+      "expect": {
+        "opcode": 44,
+        "framed": false,
+        "seq": null,
+        "payload": "6664ef8019010405010405",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_touch_single_tap",
+      "note": "state change: single tap",
+      "input": "f501",
+      "expect": {
+        "opcode": 245,
+        "framed": false,
+        "seq": null,
+        "payload": "01",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_touch_hold_start",
+      "note": "state change: touchbar held \u2014 the Even AI trigger",
+      "input": "f517",
+      "expect": {
+        "opcode": 245,
+        "framed": false,
+        "seq": null,
+        "payload": "17",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_glasses_worn",
+      "note": "state change: glasses put on",
+      "input": "f506",
+      "expect": {
+        "opcode": 245,
+        "framed": false,
+        "seq": null,
+        "payload": "06",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_case_battery",
+      "note": "state change: case battery percentage",
+      "input": "f50f42",
+      "expect": {
+        "opcode": 245,
+        "framed": false,
+        "seq": null,
+        "payload": "0f42",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_mic_frame",
+      "note": "one LC3 frame, sequence 10",
+      "input": "f10a0000000000000000000000000000000000000000",
+      "expect": {
+        "opcode": 241,
+        "framed": false,
+        "seq": null,
+        "payload": "0a0000000000000000000000000000000000000000",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "decode",
+      "name": "decode_mic_enable_ack",
+      "note": "generic acknowledgement with the echoed argument",
+      "input": "0ec901",
+      "expect": {
+        "opcode": 14,
+        "framed": false,
+        "seq": null,
+        "payload": "c901",
+        "trailer": ""
+      }
+    },
+    {
+      "kind": "crc",
+      "name": "crc_empty",
+      "input": "",
+      "expect": "00000000"
+    },
+    {
+      "kind": "crc",
+      "name": "crc_ascii",
+      "input": "313233343536373839",
+      "expect": "cbf43926"
+    },
+    {
+      "kind": "crc",
+      "name": "crc_bitmap_header",
+      "input": "424dfe260000000000003e000000",
+      "expect": "58ac4c42"
+    },
+    {
+      "kind": "crc",
+      "name": "crc_ramp",
+      "input": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "expect": "29058c73"
+    },
+    {
+      "kind": "crc_bmp",
+      "name": "crc_bmp_empty",
+      "input": "",
+      "expect": "34788508"
+    },
+    {
+      "kind": "crc_bmp",
+      "name": "crc_bmp_ascii",
+      "input": "313233343536373839",
+      "expect": "2b9bcb77"
+    },
+    {
+      "kind": "crc_bmp",
+      "name": "crc_bmp_bitmap_header",
+      "input": "424dfe260000000000003e000000",
+      "expect": "6c450be4"
+    },
+    {
+      "kind": "crc_bmp",
+      "name": "crc_bmp_ramp",
+      "input": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "expect": "dee5b6d9"
+    },
+    {
+      "kind": "split",
+      "name": "split_ascii",
+      "input": "6162636465666768696a6b6c6d6e6f70",
+      "limit": 5,
+      "expect": [
+        "6162636465",
+        "666768696a",
+        "6b6c6d6e6f",
+        "70"
+      ]
+    },
+    {
+      "kind": "split",
+      "name": "split_accented",
+      "input": "63616666c3a820636f72726574746f20706572c3b2",
+      "limit": 7,
+      "expect": [
+        "63616666c3a820",
+        "636f7272657474",
+        "6f20706572c3b2"
+      ]
+    },
+    {
+      "kind": "split",
+      "name": "split_cjk",
+      "input": "e69db1e4baace983bde6b88be8b0b7e58cbae7a59ee5aeaee5898d",
+      "limit": 7,
+      "expect": [
+        "e69db1e4baac",
+        "e983bde6b88b",
+        "e8b0b7e58cba",
+        "e7a59ee5aeae",
+        "e5898d"
+      ]
+    },
+    {
+      "kind": "split",
+      "name": "split_emoji",
+      "input": "6f6b20f09f918df09f8fbd20646f6e6520f09f9ab4206e6f77",
+      "limit": 9,
+      "expect": [
+        "6f6b20f09f918d",
+        "f09f8fbd20646f6e65",
+        "20f09f9ab4206e6f77"
+      ]
+    },
+    {
+      "kind": "split",
+      "name": "split_mixed",
+      "input": "63697474c3a020e69db1e4baac206f6b",
+      "limit": 6,
+      "expect": [
+        "63697474c3a0",
+        "20e69db1",
+        "e4baac206f6b"
+      ]
+    }
+  ]
+}

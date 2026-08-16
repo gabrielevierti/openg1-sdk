@@ -1,0 +1,755 @@
+# OG1 SDK — Even Realities G1 BLE protocol
+# Single source of truth. Every language binding's constant tables are generated
+# from this file by tools/codegen.py. Do not hand-edit generated files.
+#
+# Confidence levels used throughout:
+#   confirmed  - documented by Even Realities and/or verified on hardware by
+#                multiple independent implementations
+#   observed   - seen in captures / decompiled app traffic, semantics inferred
+#   guessed    - opcode known, payload semantics not established
+#
+# Nothing here is official. This is a community reverse-engineering effort.
+
+meta:
+  name: openg1
+  spec_version: "0.1.0"
+  target_device: "Even Realities G1"
+  firmware_seen: ["1.4.5", "1.5.6"]
+  license: MIT
+
+transport:
+  # Both arms expose an independent Nordic UART Service.
+  service_uuid: "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+  tx_char_uuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e"   # app -> glasses (write / write-without-response)
+  rx_char_uuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e"   # glasses -> app (notify)
+  # Conservative pre-negotiation ATT payload. After MTU exchange the session
+  # raises this to (mtu - 3), capped at max_chunk.
+  default_chunk: 20
+  max_chunk: 176
+  # The device drops the link after this long without a heartbeat.
+  idle_timeout_s: 32
+  heartbeat_interval_s: 28
+  # Advertised names. Historical firmware used a fixed-width channel field,
+  # newer ones vary in width, hence the loose match.
+  name_regex: "^Even[ _]G1_(?P<channel>\\d+)_(?P<side>[LR])_(?P<serial>.+)$"
+  name_prefix: "Even G1_"
+
+display:
+  width_px: 576
+  height_px: 136
+  # Even AI / text rendering safe width. The demo app uses 488 with a 21px font.
+  text_width_px: 488
+  default_font_px: 21
+  default_lines_per_screen: 5
+  bmp_bit_depth: 1
+  bmp_storage_address: [0x00, 0x1c, 0x00, 0x00]
+  bmp_chunk_bytes: 194
+
+status:
+  SUCCESS:  0xC9
+  FAILURE:  0xCA
+  CONTINUE: 0xCB
+
+# ---------------------------------------------------------------------------
+# Framing
+#
+# The G1 uses two packet shapes on the same characteristic. Which one applies
+# is a per-opcode property, not something you can infer from the bytes.
+#
+#   raw:    [opcode, ...payload]
+#           Used by the high-throughput and legacy commands (text, bitmap,
+#           mic, getters that take no argument).
+#
+#   framed: [opcode, len_lo, len_hi, seq, ...payload]
+#           `len` is the TOTAL packet length including the 4 header bytes.
+#           `seq` is drawn from the session-global sequence counter, which is
+#           itself periodically re-synced to the right arm with SEQ_SYNC.
+#           The device echoes `seq` back in its reply, which is how replies
+#           are correlated to requests.
+#
+# Several published tables mis-read framed packets as "command + subcommand"
+# (e.g. "0x22 0x05" is really opcode 0x22 with length 5). This spec treats
+# them as framed and the conformance vectors prove the round-trip.
+# ---------------------------------------------------------------------------
+framing:
+  raw:
+    header_bytes: 1
+  framed:
+    header_bytes: 4
+    length_offset: 1
+    length_type: u16le
+    length_includes_header: true
+    seq_offset: 3
+
+# ---------------------------------------------------------------------------
+# Dual-arm ordering
+#
+# Unless an opcode declares target: right / left, a command goes to BOTH arms,
+# left first, and the right write is held until the left acknowledges. This is
+# the behaviour Even's own demo app documents and it matters: firing both
+# writes concurrently produces torn frames on the display.
+# ---------------------------------------------------------------------------
+arms:
+  LEFT: 0
+  RIGHT: 1
+
+commands:
+
+  # --- Display ------------------------------------------------------------
+
+  - name: SET_BRIGHTNESS
+    opcode: 0x01
+    framing: raw
+    target: right
+    response: generic
+    confidence: confirmed
+    fields:
+      - {name: brightness, type: u8, min: 0x00, max: 0x2a}
+      - {name: auto, type: u8, min: 0, max: 1}
+
+  - name: SEND_TEXT
+    opcode: 0x4E
+    framing: raw
+    target: both
+    response: generic
+    confidence: confirmed
+    doc: >
+      Nine-byte header followed by UTF-8 text. new_char_pos is a 16-bit big
+      endian offset used by Even AI streaming to mark where freshly arrived
+      characters begin; for plain text display send 0.
+    fields:
+      - {name: seq, type: u8}
+      - {name: total_packages, type: u8, min: 1, max: 255}
+      - {name: package_index, type: u8}
+      - {name: screen_status, type: u8}
+      - {name: new_char_pos, type: u16be}
+      - {name: page, type: u8}
+      - {name: max_page, type: u8, min: 1}
+      - {name: data, type: bytes}
+
+  - name: CLEAR_SCREEN
+    opcode: 0x18
+    framing: raw
+    target: both
+    response: generic
+    confidence: observed
+    doc: Clears bitmap layer. Also appears to drop any text layer.
+    fields: []
+
+  - name: BMP_DATA
+    opcode: 0x15
+    framing: raw
+    target: both
+    response: generic
+    confidence: confirmed
+    doc: >
+      Packet 0 carries the 4-byte destination address; later packets do not.
+      Left and right may be written concurrently for this opcode only — it is
+      a bulk transfer to arm-local storage, not a display update.
+    fields:
+      - {name: seq, type: u8}
+      - {name: data, type: bytes}
+
+  - name: BMP_END
+    opcode: 0x20
+    framing: raw
+    target: both
+    response: generic
+    confidence: confirmed
+    constant_payload: [0x0d, 0x0e]
+    fields: []
+
+  - name: BMP_CRC
+    opcode: 0x16
+    framing: raw
+    target: both
+    response: generic
+    confidence: confirmed
+    doc: >
+      CRC-32 (ISO-HDLC / zlib, "Crc32Xz") over the storage address bytes
+      followed by the whole image, transmitted big endian.
+    fields:
+      - {name: crc, type: u32be}
+
+  - name: SET_DISPLAY_SETTINGS
+    opcode: 0x26
+    framing: framed
+    target: both
+    response: generic
+    confidence: confirmed
+    doc: >
+      Height/depth of the virtual screen. Must be sent twice: once with
+      preview=1 (glasses light up and hold), then again within a few seconds
+      with preview=0 to commit. Without the commit the setting is rejected.
+    fields:
+      - {name: subcommand, type: u8, const: 0x08}
+      - {name: reserved, type: u8, const: 0x02}
+      - {name: preview, type: u8, min: 0, max: 1}
+      - {name: height, type: u8, min: 0x00, max: 0x08}
+      - {name: depth, type: u8, min: 0x01, max: 0x09}
+
+  - name: GET_DISPLAY_SETTINGS
+    opcode: 0x3B
+    framing: raw
+    target: right
+    response: generic
+    confidence: confirmed
+    fields: []
+
+  - name: GET_BRIGHTNESS
+    opcode: 0x29
+    framing: raw
+    target: right
+    response: custom
+    confidence: confirmed
+    fields: []
+
+  - name: DISPLAY_POWER
+    opcode: 0x39
+    framing: framed
+    target: both
+    response: generic
+    confidence: observed
+    doc: Observed immediately before the panel lights up. Payload is a single flag.
+    fields:
+      - {name: enable, type: u8, min: 0, max: 1}
+
+  # --- Session / lifecycle -------------------------------------------------
+
+  - name: HEARTBEAT
+    opcode: 0x25
+    framing: framed
+    target: both
+    response: generic
+    confidence: confirmed
+    doc: >
+      Keeps the link alive. The heartbeat carries its own counter, independent
+      of the global sequence. Payload repeats the counter after a 0x04 tag.
+    fields:
+      - {name: tag, type: u8, const: 0x04}
+      - {name: counter, type: u8}
+
+  - name: SEQ_SYNC
+    opcode: 0x22
+    framing: framed
+    target: right
+    response: generic
+    confidence: observed
+    doc: Publishes the app's global sequence counter to the device.
+    fields:
+      - {name: tag, type: u8, const: 0x01}
+
+  - name: INIT
+    opcode: 0x4D
+    framing: raw
+    target: left
+    response: generic
+    confidence: observed
+    doc: >
+      Sent once after connecting, left arm only. Purpose unknown; the official
+      app always sends it and some features misbehave without it.
+    constant_payload: [0xFB]
+    fields: []
+
+  - name: HARD_RESET
+    opcode: 0x23
+    framing: raw
+    target: both
+    response: none
+    confidence: confirmed
+    constant_payload: [0x72]
+    fields: []
+
+  - name: GET_FIRMWARE_INFO
+    opcode: 0x23
+    framing: raw
+    target: both
+    response: custom
+    confidence: confirmed
+    constant_payload: [0x74]
+    # This reply is the odd one out: no opcode, no length, just ASCII. It
+    # cannot be correlated by opcode, so the session matches it positionally.
+    headerless_response: true
+    doc: >
+      Replies with a headerless ASCII blob, zero padded to 203 bytes, of the
+      form "net build time: ..., app build time ..., ver X.Y.Z, JBD DeviceID N".
+    fields: []
+
+  - name: GET_UPTIME
+    opcode: 0x37
+    framing: raw
+    target: both
+    response: custom
+    confidence: confirmed
+    doc: Seconds since boot, u32 little endian.
+    fields: []
+
+  - name: GET_BATTERY
+    opcode: 0x2C
+    framing: raw
+    target: both
+    response: custom
+    confidence: confirmed
+    constant_payload: [0x01]
+    fields: []
+
+  - name: GET_DEVICE_INFO
+    opcode: 0x2C
+    framing: raw
+    target: both
+    response: custom
+    confidence: guessed
+    constant_payload: [0x02]
+    fields: []
+
+  - name: GET_MAC_ADDRESS
+    opcode: 0x2D
+    framing: raw
+    target: both
+    response: custom
+    confidence: guessed
+    fields: []
+
+  - name: GET_GLASSES_SERIAL
+    opcode: 0x33
+    framing: raw
+    target: both
+    response: custom
+    confidence: guessed
+    fields: []
+
+  - name: GET_DEVICE_SERIAL
+    opcode: 0x34
+    framing: raw
+    target: both
+    response: custom
+    confidence: guessed
+    fields: []
+
+  - name: GET_ESB_CHANNEL
+    opcode: 0x35
+    framing: raw
+    target: both
+    response: custom
+    confidence: guessed
+    fields: []
+
+  - name: GET_ESB_NOTIFY_COUNT
+    opcode: 0x36
+    framing: raw
+    target: both
+    response: custom
+    confidence: guessed
+    fields: []
+
+  - name: GET_BURIED_POINT
+    opcode: 0x3E
+    framing: raw
+    target: both
+    response: custom
+    confidence: observed
+    doc: >
+      Usage telemetry the firmware accumulates locally ("buried point" data).
+      Contents may be personal; the SDK never uploads it anywhere.
+    fields: []
+
+  # --- Audio ---------------------------------------------------------------
+
+  - name: MIC_CONTROL
+    opcode: 0x0E
+    framing: raw
+    target: right
+    response: generic
+    confidence: confirmed
+    doc: >
+      Right arm only. Once enabled, LC3 frames stream back as MIC_DATA events.
+      Firmware caps a single capture at roughly 30 seconds.
+    fields:
+      - {name: enable, type: u8, min: 0, max: 1}
+
+  # --- Settings ------------------------------------------------------------
+
+  - name: SET_SILENT_MODE
+    opcode: 0x03
+    framing: raw
+    target: both
+    response: generic
+    confidence: confirmed
+    doc: Enum payload, not a boolean — 0x0C enables, 0x0A disables.
+    fields:
+      - {name: mode, type: u8, enum: {"ON": 0x0C, "OFF": 0x0A}}
+
+  - name: GET_SILENT_MODE
+    opcode: 0x2B
+    framing: raw
+    target: both
+    response: custom
+    confidence: confirmed
+    fields: []
+
+  - name: SET_HEADUP_ANGLE
+    opcode: 0x0B
+    framing: raw
+    target: right
+    response: generic
+    confidence: confirmed
+    fields:
+      - {name: angle, type: u8, min: 0x00, max: 0x3c}
+      - {name: level, type: u8, const: 0x01}
+
+  - name: GET_HEADUP_ANGLE
+    opcode: 0x32
+    framing: raw
+    target: right
+    response: custom
+    confidence: confirmed
+    fields: []
+
+  - name: SET_WEAR_DETECTION
+    opcode: 0x27
+    framing: raw
+    target: both
+    response: generic
+    confidence: confirmed
+    doc: When on, the glasses emit WORN / REMOVED state events.
+    fields:
+      - {name: enable, type: u8, min: 0, max: 1}
+
+  - name: GET_WEAR_DETECTION
+    opcode: 0x3A
+    framing: raw
+    target: both
+    response: custom
+    confidence: confirmed
+    fields: []
+
+  - name: GET_ANTI_SHAKE
+    opcode: 0x2A
+    framing: raw
+    target: both
+    response: custom
+    confidence: guessed
+    fields: []
+
+  - name: SET_BUTTON_CONFIG
+    opcode: 0x08
+    framing: framed
+    target: both
+    response: generic
+    confidence: observed
+    doc: >
+      Remaps the head-up gesture. Payload is [0x03, action]. Action ids match
+      the ButtonAction enum below.
+    fields:
+      - {name: tag, type: u8, const: 0x03}
+      - {name: action, type: u8}
+
+  - name: SET_GESTURE_CONFIG
+    opcode: 0x26
+    framing: framed
+    target: both
+    response: generic
+    confidence: observed
+    doc: >
+      Shares opcode 0x26 with SET_DISPLAY_SETTINGS, distinguished by the
+      subcommand byte (0x05 here, 0x08 there). Payload is [0x05, action].
+    fields:
+      - {name: subcommand, type: u8, const: 0x05}
+      - {name: action, type: u8}
+
+  - name: CALIBRATION
+    opcode: 0x10
+    framing: framed
+    target: both
+    response: generic
+    confidence: observed
+    doc: >
+      Head-tracking calibration state machine. 0x01 resets the zero-degree
+      reference; the 0x02 form carries a two-byte step/result pair.
+    fields:
+      - {name: step, type: u8}
+      - {name: data, type: bytes}
+
+  - name: SET_LANGUAGE
+    opcode: 0x3D
+    framing: framed
+    target: both
+    response: generic
+    confidence: guessed
+    fields:
+      - {name: tag, type: u8, const: 0x01}
+      - {name: language, type: u8}
+
+  - name: SET_MESSAGE_MODE
+    opcode: 0x3C
+    framing: framed
+    target: both
+    response: generic
+    confidence: guessed
+    fields:
+      - {name: mode, type: u8}
+
+  - name: SET_ANCS_CONFIG
+    opcode: 0x38
+    framing: framed
+    target: left
+    response: generic
+    confidence: guessed
+    doc: Apple Notification Center Service bridge configuration.
+    fields:
+      - {name: data, type: bytes}
+
+  - name: SET_DEBUG_MODE
+    opcode: 0xF4
+    framing: raw
+    target: both
+    response: generic
+    confidence: observed
+    fields:
+      - {name: enable, type: u8, min: 0, max: 1}
+
+  # --- Dashboard -----------------------------------------------------------
+
+  - name: SET_DASHBOARD
+    opcode: 0x06
+    framing: framed
+    target: both
+    response: echo_seq
+    confidence: confirmed
+    doc: >
+      Multiplexed by the first payload byte. 0x01 sets clock and weather,
+      0x06 sets the dashboard layout. See the DashboardSub enum.
+    fields:
+      - {name: subcommand, type: u8}
+      - {name: data, type: bytes}
+
+  - name: DASHBOARD_LOCK
+    opcode: 0x50
+    framing: framed
+    target: right
+    response: generic
+    confidence: observed
+    fields:
+      - {name: tag, type: u8, const: 0x01}
+      - {name: locked, type: u8, min: 0, max: 1}
+
+  - name: SET_QUICK_NOTE
+    opcode: 0x1E
+    framing: framed
+    target: both
+    response: generic
+    confidence: observed
+    fields:
+      - {name: data, type: bytes}
+
+  - name: SET_CALENDAR_EVENT
+    opcode: 0x58
+    framing: framed
+    target: left
+    response: generic
+    confidence: guessed
+    fields:
+      - {name: data, type: bytes}
+
+  # --- Notifications -------------------------------------------------------
+
+  - name: SET_NOTIFICATION_CONFIG
+    opcode: 0x04
+    framing: raw
+    target: left
+    response: generic
+    confidence: confirmed
+    chunked: {max_payload: 180, count_offset: 1, index_offset: 2}
+    doc: >
+      Chunked JSON allow-list. Header is [0x04, chunk_count, chunk_index]
+      followed by up to 180 bytes of the UTF-8 JSON document.
+    fields:
+      - {name: chunk_count, type: u8, min: 1}
+      - {name: chunk_index, type: u8}
+      - {name: data, type: bytes}
+
+  - name: SEND_NOTIFICATION
+    opcode: 0x4B
+    framing: raw
+    target: left
+    response: generic
+    confidence: confirmed
+    chunked: {max_payload: 180, count_offset: 1, index_offset: 2}
+    fields:
+      - {name: chunk_count, type: u8, min: 1}
+      - {name: chunk_index, type: u8}
+      - {name: data, type: bytes}
+
+  - name: CLEAR_NOTIFICATION
+    opcode: 0x4C
+    framing: raw
+    target: left
+    response: generic
+    confidence: observed
+    fields: []
+
+  - name: GET_WHITELIST
+    opcode: 0x2E
+    framing: raw
+    target: left
+    response: custom
+    confidence: guessed
+    fields: []
+
+  # --- Features ------------------------------------------------------------
+
+  - name: SET_TELEPROMPTER
+    opcode: 0x09
+    framing: framed
+    target: both
+    response: generic
+    confidence: guessed
+    fields:
+      - {name: data, type: bytes}
+
+  - name: SET_NAVIGATION
+    opcode: 0x0A
+    framing: framed
+    target: both
+    response: generic
+    confidence: guessed
+    doc: >
+      Turn-by-turn payload. Field layout is not established; the SDK exposes
+      it as an opaque buffer plus a best-effort structured builder that can be
+      swapped out once the layout is nailed down.
+    fields:
+      - {name: data, type: bytes}
+
+# ---------------------------------------------------------------------------
+# Unsolicited messages from the glasses
+# ---------------------------------------------------------------------------
+events:
+
+  - name: MIC_DATA
+    opcode: 0xF1
+    confidence: confirmed
+    doc: LC3 frame. One byte sequence number then the encoded audio.
+    fields:
+      - {name: seq, type: u8}
+      - {name: data, type: bytes}
+
+  - name: STATE_CHANGE
+    opcode: 0xF5
+    confidence: confirmed
+    doc: Touchbar, wear, case and dashboard events. Sub-code table below.
+    fields:
+      - {name: subcode, type: u8}
+      - {name: data, type: bytes}
+
+  - name: BATTERY_REPORT
+    opcode: 0x2C
+    confidence: confirmed
+    doc: >
+      Pushed periodically as well as in reply to GET_BATTERY. Byte 1 is a
+      0x66 tag, byte 2 is percent 0-100. Remaining bytes carry voltage and
+      charge state and vary between firmware builds.
+    fields:
+      - {name: tag, type: u8}
+      - {name: percent, type: u8}
+      - {name: data, type: bytes}
+
+# ---------------------------------------------------------------------------
+# Enumerations
+# ---------------------------------------------------------------------------
+enums:
+
+  StateEvent:
+    _doc: Sub-codes of the 0xF5 event.
+    TOUCHBAR_DOUBLE_TAP: 0x00
+    TOUCHBAR_SINGLE_TAP: 0x01
+    HEAD_UP: 0x02
+    HEAD_DOWN: 0x03
+    TOUCHBAR_TRIPLE_TAP: 0x04
+    TOUCHBAR_TRIPLE_TAP_ALT: 0x05
+    GLASSES_WORN: 0x06
+    GLASSES_REMOVED: 0x07
+    CASE_LID_OPEN: 0x08
+    CHARGING_STATE: 0x09
+    UNKNOWN_0A: 0x0A
+    CASE_LID_CLOSED: 0x0B
+    CASE_CHARGING: 0x0E
+    CASE_BATTERY: 0x0F
+    BLE_PAIRED: 0x11
+    UNKNOWN_12: 0x12
+    TOUCHBAR_HOLD_START: 0x17
+    TOUCHBAR_HOLD_END: 0x18
+    DASHBOARD_OPENED: 0x1E
+    DASHBOARD_CLOSED: 0x1F
+    TRANSLATE_TRANSCRIBE_TOGGLE: 0x20
+
+  ScreenAction:
+    _doc: Low nibble of SEND_TEXT screen_status.
+    NEW_CONTENT: 0x01
+
+  ScreenStatus:
+    _doc: High nibble of SEND_TEXT screen_status.
+    EVEN_AI_DISPLAYING: 0x30
+    EVEN_AI_COMPLETE: 0x40
+    EVEN_AI_MANUAL: 0x50
+    EVEN_AI_NETWORK_ERROR: 0x60
+    TEXT_SHOW: 0x70
+
+  DashboardSub:
+    TIME_WEATHER: 0x01
+    LAYOUT: 0x06
+
+  DashboardMode:
+    FULL: 0x00
+    DUAL: 0x01
+    MINIMAL: 0x02
+
+  DashboardPanel:
+    _doc: Secondary pane, honoured in FULL and DUAL modes only.
+    NOTES: 0x00
+    STOCK: 0x01
+    NEWS: 0x02
+    CALENDAR: 0x03
+    NAVIGATION: 0x04
+    EMPTY: 0x05
+
+  WeatherIcon:
+    NONE: 0x00
+    NIGHT: 0x01
+    CLOUDS: 0x02
+    DRIZZLE: 0x03
+    HEAVY_DRIZZLE: 0x04
+    RAIN: 0x05
+    HEAVY_RAIN: 0x06
+    THUNDER: 0x07
+    THUNDERSTORM: 0x08
+    SNOW: 0x09
+    MIST: 0x0A
+    FOG: 0x0B
+    SAND: 0x0C
+    SQUALLS: 0x0D
+    TORNADO: 0x0E
+    FREEZING: 0x0F
+    SUNNY: 0x10
+
+  ButtonAction:
+    _doc: Gesture / head-up bindings observed in the official app.
+    DASHBOARD: 0x00
+    TRANSLATE: 0x02
+    TELEPROMPTER: 0x03
+    NAVIGATION: 0x04
+    TRANSCRIBE: 0x05
+    NONE: 0x02
+
+  SilentMode:
+    "ON": 0x0C
+    "OFF": 0x0A
+
+  Frame:
+    _doc: Serial number prefix. e.g. S110LAAL103842 -> square frame, grey.
+    ROUND: "S100"
+    SQUARE: "S110"
+
+  FrameColor:
+    GREY: "AA"
+    BROWN: "BB"
+    GREEN: "CC"
