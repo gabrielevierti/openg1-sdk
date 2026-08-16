@@ -1,4 +1,4 @@
-# OpenG1
+# Open G1 SDK
 
 ![Version](https://img.shields.io/badge/version-1.0-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
