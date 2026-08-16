@@ -69,7 +69,7 @@ class SimulatorWindow:
         self.controller = controller
 
         self.root = tk.Tk()
-        self.root.title("openg1 simulator — Even Realities G1")
+        self.root.title("OpenG1SDK - G1 Glasses Simulator")
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.root.resizable(False, False)
@@ -89,7 +89,7 @@ class SimulatorWindow:
         header = tk.Frame(self.root, bg=BG)
         header.pack(fill="x", **pad)
         tk.Label(
-            header, text="Even Realities G1 — 576 × 136, 1 bit",
+            header, text="576 × 136, 1 bit",
             bg=BG, fg=DIM, font=("TkDefaultFont", 11),
         ).pack(side="left")
         self.attach_label = tk.Label(

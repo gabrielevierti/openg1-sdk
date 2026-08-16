@@ -4,7 +4,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-<img width="1314" height="849" alt="splash" src="https://github.com/user-attachments/assets/d52bdb50-30bd-4922-a3a1-278efab3bd2a" />
+![Splash](splash.png)
 
 **An open-source Python SDK and simulator for Even Realities G1 smart glasses.**
 
