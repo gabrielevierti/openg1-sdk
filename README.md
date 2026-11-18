@@ -1,506 +1,206 @@
-# Open G1 SDK
+# OpenG1 SDK
 
-![Version](https://img.shields.io/badge/version-1.0-blue)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+**An open SDK and simulator for Even Realities G1 smart glasses. One API on a computer, on Android and on iPhone.**
 
-![Splash](splash.png)
+```ts
+import { G1 } from "openg1";
+import { connectSimulator } from "openg1/transports/ws";
 
-**An open-source Python SDK and simulator for Even Realities G1 smart glasses.**
+const g1 = await G1.connect(connectSimulator());      // or Web Bluetooth, React Native, Capacitor, noble
 
-OpenG1 lets you develop applications for the G1 without depending on the official app. Connect to real glasses over Bluetooth, render and test applications in the simulator, work with the display, read device state, receive gestures, capture microphone audio, and access the underlying protocol directly.
+await g1.display.text("ciao");
+await g1.display.draw((c) => c.text("87", c.width / 2, 20, { font: "xl", align: "center" }));
+g1.on("touch", (event) => console.log(event.arm, event.gesture));
+```
 
-The simulator uses the same `G1` API as real hardware, so an application written against OpenG1 can move between the simulator and physical glasses without code changes.
+![The simulator page: the panel showing a navigation screen, touch bars, a playground and the packet log](docs/simulator.png)
 
-> The G1 is discontinued and the official software ecosystem is winding down. OpenG1 exists to keep the hardware useful and give owners a way to continue building for it.
+The only line that changes between the simulator and a pair of glasses, or between a laptop and a phone, is the one that makes the connection.
 
-**Not affiliated with Even Realities.**
+> The G1 is discontinued and its official software is winding down. OpenG1 exists so the hardware stays useful. **Not affiliated with Even Realities.**
 
-## Quick start
-
-Install OpenG1:
+## Try it in thirty seconds
 
 ```sh
-pip install -e '.[all]'
+git clone https://github.com/gabrielevierti/openg1-sdk && cd openg1-sdk
+npm install          # also builds
+npx openg1 sim       # → http://127.0.0.1:8765
 ```
 
-Then connect to a pair of glasses:
+Open the page. It shows the 576×136 panel as the wearer sees it, two touch bars you can tap, and a playground with six example programs. The page works on a phone too, and it can run with no server at all: `dist/web/index.html` is one self-contained file with the emulator inside.
 
-```python
-from openg1 import G1
-
-async with await G1.connect() as g1:
-    await g1.display.text("ciao")
-
-    async for event in g1.events():
-        print(event)
-```
-
-Or develop without owning the hardware:
-
-```python
-from openg1sim import SimulatedG1
-
-async with SimulatedG1() as sim:
-    await sim.g1.display.text("ciao")
-    print(sim.panel.frame.to_blocks())
-```
-
-The same application code works with both.
-
-## What you can build
-
-OpenG1 currently supports:
-
-* Text rendering, wrapping and pagination
-* 1-bit bitmap images with dithering
-* Display brightness
-* Dashboard and notification payloads
-* Silent mode
-* Head-up angle
-* Wear detection
-* Touch events
-* Head gestures
-* Even AI trigger events
-* Battery and firmware information
-* Microphone capture and LC3 decoding
-* Raw protocol packets
-* Navigation and teleprompter payloads
-* A full software simulator
-
-For anything that is not yet wrapped by the high-level API, you can send raw packets directly.
-
-## Develop without the glasses
-
-The simulator is a first-class part of OpenG1, not just a debugging utility.
-
-It emulates the G1 protocol, renders the display, accepts simulated wearer input, and exposes the same `G1` interface used by physical hardware.
-
-Start it with:
+Then point a program at it:
 
 ```sh
-python3 -m openg1sim
+node examples/01-hello.ts
 ```
 
-Then run your application against it:
+## What is in the box
+
+| | |
+| --- | --- |
+| **`openg1`** | The SDK. Protocol, session, and a `G1` object with `display`, `info`, `settings`, `dashboard`, `notifications`, `audio`, `navigation` and `assistant`. Pure TypeScript, no dependencies, runs anywhere JavaScript does. |
+| **`openg1/sim`** | The simulator as a library: emulated firmware for both arms, a renderer, and the things a wearer does. Runs in Node, in a browser tab, in a test. |
+| **`openg1/transports/*`** | How bytes reach the glasses: `web-bluetooth`, `react-native`, `capacitor`, `noble`, plus `ws` and `tcp` for simulators. |
+| **`openg1/server`** | A simulator other processes can connect to, and the **hub**: the whole SDK as a JSON API for Swift, Kotlin, Python, Shortcuts or curl. |
+| **`openg1` CLI** | `sim`, `hub`, `text`, `image`, `info`, `monitor`, `send`, `demo`, `screenshot`, `scan`, `spec`. |
+| **`app/`** | A companion app for iPhone and Android (Capacitor): its own navigator, teleprompter, notes, mini-apps, settings. See [`app/README.md`](app/README.md). |
+| **`python/`** | The original Python SDK, unchanged in behaviour. It connects to this simulator too. |
+| **`protocol/`** | The wire protocol as YAML, plus conformance vectors both SDKs must pass. |
+
+## The display
+
+There are two ways to put something on the glasses.
+
+**Firmware text.** `g1.display.text(message)` uses the glasses' own renderer: one size, five lines a screen. The SDK wraps and pages for you, because the firmware does neither.
+
+**Bitmaps.** Everything else is a 576×136 one-bit image, and `Canvas` is how you make one: lines, boxes, arcs, four font sizes, wrapped text boxes, progress bars, direction arrows.
+
+```ts
+await g1.display.draw((c) => {
+  const { y, height } = c.safe;                 // the rows this pair can actually show
+  c.text("21:47", 16, y + 4, { font: "xl" });
+  c.text("Next: stand-up in 12 min", 250, y + 12, { font: "md" });
+  c.progress(250, y + height - 30, 300, 14, 0.8);
+});
+
+await g1.display.image(imageData, { fit: "contain" });      // any RGBA pixels, scaled and dithered
+await g1.navigation.update({ maneuver: "turn_right", distanceM: 350, road: "Corso Sempione", speedKmh: 48, speedLimitKmh: 50 });
+```
+
+How the glasses sit on your face can hide rows at the top or bottom of the panel. Measure it once, put it in a profile, and `c.safe`, `display.image` and the simulator all respect it. See [`docs/SIMULATOR.md`](docs/SIMULATOR.md#the-rows-you-cannot-see).
+
+## Events
+
+```ts
+g1.on("touch", (e) => …);        // single_tap, double_tap, triple_tap, hold_start, hold_end; e.arm is "left" or "right"
+g1.on("head", (e) => …);         // e.up
+g1.on("wear", (e) => …);         // e.worn
+g1.on("battery", (e) => …);
+g1.on("ai-request", () => …);    // a hold on the left touch bar: the assistant trigger
+g1.on("*", (e) => …);            // everything, including packets nobody has decoded yet
+
+const tap = await g1.waitFor("touch", { timeoutMs: 5000 });
+for await (const event of g1.events()) { … }
+```
+
+## Mini-apps
+
+```ts
+import { App, Launcher, runApp } from "openg1";
+
+class Timer extends App {
+  override intervalMs = 1000;
+  override async start() { await this.screen.show("25:00"); }
+  override async onTouch(event) { /* … */ }
+  override async tick() { /* … */ }
+}
+
+await runApp(new Launcher([new Timer(), new Clock()]), g1);   // triple-tap switches
+```
+
+Develop one with live reload: `npx openg1 sim examples/04-app.ts`. Test one without any process at all: [`examples/05-testing.test.ts`](examples/05-testing.test.ts).
+
+## On a phone, on a computer
+
+| You have | Use | |
+| --- | --- | --- |
+| Any browser, no glasses | The simulator page | Emulator runs in the tab. |
+| Android, Chrome | The simulator page, **Real glasses** tab, or your own page with `openg1/transports/web-bluetooth` | Needs https or localhost. |
+| iPhone | A Web Bluetooth browser (Bluefy) with the same page; or `react-native` / `capacitor` in a native app | Safari has no Web Bluetooth. |
+| React Native app | `openg1/transports/react-native` with `react-native-ble-plx` | iPhone and Android. |
+| Capacitor / Ionic app | `openg1/transports/capacitor` with `@capacitor-community/bluetooth-le` | iPhone and Android. |
+| Computer, Chrome or Edge | Web Bluetooth, as on Android | macOS, Windows, Linux, ChromeOS. |
+| Computer, Node | `openg1/transports/noble` | `npm install @stoprocent/noble`. |
+| Computer, Python | [`python/`](python/) with bleak | The original SDK. |
+| Swift, Kotlin, anything else | The hub's HTTP API | The hub holds the connection. |
+
+Details and a snippet for each: [`docs/PLATFORMS.md`](docs/PLATFORMS.md).
+
+### What has been tested, and how
+
+This matters more than the table above, so plainly:
+
+- **The Python SDK** is the implementation that has been used on real glasses.
+- **The TypeScript SDK has not been run against real glasses yet.** What it has is byte-level agreement with the Python one: it passes the same 83 conformance vectors, and a parity test compares its command builders, text layout, dithering, BMP files and transfer chunking with Python's output. The two also interoperate in both directions over the simulator link.
+- **The Bluetooth adapters** (Web Bluetooth, React Native, Capacitor, noble) are tested against stand-ins shaped like each library's API, with the simulator behind them. That proves the wiring, not the radio. Expect to adjust details — MTU in particular — the first time each one meets hardware, and please report what you find.
+- **One deliberate difference from the Python SDK:** `display.text` here sends to both arms, left first, as the protocol spec and the official app do. The Python SDK sends text to the left arm only. If text appears in one lens on your glasses with Python, that is why; the simulator flags it.
+
+## The simulator
 
 ```sh
-OPENG1_SIMULATOR=1 python3 myapp.py
+npx openg1 sim                        # page + endpoints for apps
+npx openg1 sim app.ts                 # run your app in it, reload on save
+npx openg1 sim --host 0.0.0.0         # reachable from a phone on the same network
+npx openg1 sim --top 23               # hide the top 23 rows, as on your pair
 ```
 
-No application changes are required.
+It emulates the firmware rather than stubbing it: left-then-right ordering, zero-padded replies, text and bitmap reassembly, the bitmap CRC (address bytes included), the 32-second heartbeat timeout, MTU limits. So it catches what a byte log cannot: a line the firmware would clip, a sixth line it would drop, ink in rows you cannot see, a lens left dark, a transfer that would be rejected.
 
-You can also use the simulator in several modes:
+Bitmap screens are pixel-exact. Text screens are drawn in a stand-in font, because the firmware's own is not published; whether a line fits is judged with the same metrics the SDK lays text out with.
+
+Apps connect over WebSocket (`ws://host:8765`), the Python SDK over TCP (`OPENG1_SIMULATOR=1`), scripts over HTTP (`/api/state`, `/api/frame.png`, `/api/input`). More in [`docs/SIMULATOR.md`](docs/SIMULATOR.md).
+
+## The hub
 
 ```sh
-python3 -m openg1sim             # simulator window
-python3 -m openg1sim app         # browser interface
-python3 -m openg1sim dev app.py  # live-reload development
-python3 -m openg1sim web         # panel only
-python3 -m openg1sim term        # terminal viewer
-python3 -m openg1sim demo        # scripted demonstration
+npx openg1 hub                # simulator + JSON API
+npx openg1 hub --ble          # real glasses + JSON API (needs noble)
 ```
 
-The simulator listens on TCP port `8766` for protocol traffic and serves the panel interface on `http://127.0.0.1:8765`.
+```sh
+curl -X POST localhost:8765/v1/display/text -d '{"text":"ciao"}' -H 'content-type: application/json'
+curl localhost:8765/v1/info/battery
+curl -N localhost:8765/v1/events        # gestures as server-sent events
+```
 
-This makes it possible to develop and test an application without repeatedly putting the glasses on, waiting for Bluetooth connections, or manually reproducing input events.
+Custom screens are a JSON list of drawing operations, so no client library is needed in any language. Reference: [`docs/HUB.md`](docs/HUB.md).
 
-## The display is simulated as pixels
-
-A protocol packet succeeding does not mean that the result is actually usable.
-
-The G1 framebuffer is:
+## Layout
 
 ```text
-576 × 136 pixels
+src/            the TypeScript SDK
+  api/          display, info, settings, dashboard, notifications, audio, navigation, assistant
+  sim/          emulated firmware, renderer, simulator
+  transports/   web-bluetooth, react-native, capacitor, noble, ws, tcp
+  server/       simulator server, hub, PNG
+  web/          the simulator page
+app/            the companion app for iPhone and Android
+python/         the Python SDK and its own in-process simulator
+protocol/       openg1.protocol.yaml, vectors.json
+tools/          codegen, vector and parity generators, font rasteriser
+examples/       programs, an app, a test, phone and hub samples
+test/           node --test
 ```
 
-OpenG1 renders that framebuffer so you can see exactly what your application is producing.
-
-For example:
-
-```python
-await sim.g1.display.text_page(
-    long_message,
-    page=1,
-    max_page=1,
-)
-
-report = sim.report()
-
-print(report.truncated_lines)
-```
-
-The simulator can therefore catch problems such as:
-
-* Text falling outside the visible region
-* Images being clipped
-* Incorrect scaling
-* Incorrect pagination
-* Incorrect display transforms
-* Content extending beyond the usable viewing area
-
-## Calibrate your glasses
-
-The physical display and the visually usable area are not necessarily identical.
-
-How the glasses sit on your face can make some rows difficult or impossible to see. OpenG1 therefore supports a calibration step that measures the usable display area and stores it as a device profile.
-
-Run:
+## Development
 
 ```sh
-python3 examples/07_calibrate.py --save
+npm test                 # 138 tests, Node 22.18+ (runs the TypeScript directly)
+npm run test:python      # the Python SDK's 276
+npm run typecheck
+npm run build            # dist/, dist/web/index.html, dist/openg1.browser.js
 ```
 
-You can also sweep through display geometries:
+The protocol lives in `protocol/openg1.protocol.yaml`; constants for both languages are generated from it (`npm run codegen`). Every item carries a confidence level — `confirmed`, `observed` or `guessed` — and [`docs/PROTOCOL.md`](docs/PROTOCOL.md) explains the wire format.
 
-```sh
-python3 examples/07_calibrate.py --sweep
-```
+## Known limits
 
-Once calibrated, pass the safe area to the image renderer:
-
-```python
-await g1.display.image(
-    image,
-    safe_area=(top, bottom),
-)
-```
-
-The image is then scaled into the usable region instead of simply being shifted around the framebuffer.
-
-The simulator uses the same calibration data, allowing you to test against the effective display area rather than an idealized 576×136 rectangle.
-
-Use:
-
-```python
-sim.check_parity()
-```
-
-to fail a test when simulator output and calibrated display behavior disagree.
-
-## CLI
-
-OpenG1 also provides a command-line interface:
-
-```sh
-openg1 scan
-openg1 info
-openg1 monitor
-openg1 text "ciao"
-openg1 image photo.jpg
-openg1 image photo.jpg --safe-area 12,12
-openg1 send 0x01 1e00
-openg1 spec
-```
-
-Everything can also be run against the simulator:
-
-```sh
-openg1 --sim demo
-```
-
-### Protocol monitor
-
-For reverse-engineering and debugging, `openg1 monitor` is particularly useful.
-
-Unknown event and command sub-codes are printed rather than silently discarded. This makes it possible to capture previously unsupported behavior and extend the protocol implementation.
-
-## Examples
-
-Every example supports `--sim`, so you can run them without a pair of glasses.
-
-```sh
-python3 examples/01_hello.py --sim
-python3 examples/05_image.py --sim --png
-```
-
-| Example            | Description                                     |
-| ------------------ | ----------------------------------------------- |
-| `01_hello.py`      | Connect, display text and read the battery      |
-| `02_events.py`     | React to taps, head gestures and wear detection |
-| `03_navigation.py` | Genova → Milano navigation example              |
-| `04_assistant.py`  | Capture microphone audio and display a response |
-| `05_image.py`      | Dither and display a bitmap                     |
-| `06_simulator.py`  | Render the display as pixels                    |
-| `07_calibrate.py`  | Measure the usable display area                 |
-| `08_diagnose.py`   | Diagnose clipping and transport problems        |
-| `09_devapp.py`     | Minimal live-reload development application     |
-| `10_starter.py`    | Starting point for a new OpenG1 application     |
-
-The image example also includes a calibration chart with `TOP`, `BOTTOM`, and a row ruler. It makes display clipping immediately visible in the simulator.
-
-## Example applications
-
-OpenG1 includes several complete applications in `examples/apps/`.
-
-| Application       | Description                          |
-| ----------------- | ------------------------------------ |
-| `clock.py`        | Time, date and battery display       |
-| `timer.py`        | Touch-controlled Pomodoro timer      |
-| `teleprompter.py` | Paginated script controlled by taps  |
-| `launcher.py`     | Switch between multiple applications |
-
-For example:
-
-```sh
-OPENG1_SIMULATOR=1 python3 examples/apps/launcher.py
-```
-
-See [`docs/BUILDING_APPS.md`](docs/BUILDING_APPS.md) for the application architecture and patterns used by these examples.
-
-## Installation
-
-OpenG1 is intentionally split into optional dependencies.
-
-```sh
-pip install -e '.[all]'
-```
-
-Or install only what you need:
-
-```sh
-pip install -e '.[ble]'
-pip install -e '.[images]'
-pip install -e '.[audio]'
-```
-
-| Extra    | Dependency | Purpose                                   |
-| -------- | ---------- | ----------------------------------------- |
-| `ble`    | `bleak`    | Bluetooth communication with real glasses |
-| `images` | `Pillow`   | PNG/JPEG loading and image processing     |
-| `audio`  | `lc3`      | LC3 microphone frame decoding             |
-
-The core protocol implementation, session layer, emulator and simulator do not require external dependencies.
-
-## Protocol implementation
-
-The wire protocol is defined in:
-
-```text
-protocol/openg1.protocol.yaml
-```
-
-This is the source of truth for the SDK.
-
-It currently describes:
-
-* 49 commands
-* 3 event types
-* 11 enums
-* 83 conformance vectors
-* Confidence levels for every reverse-engineered field
-
-Every protocol item is marked as:
-
-* `confirmed` — verified against the hardware or official implementation
-* `observed` — seen in real traffic but not fully understood
-* `guessed` — inferred from behavior or related implementations
-
-Generated constants live in:
-
-```text
-openg1/_generated.py
-```
-
-Do not edit that file manually.
-
-Regenerate it with:
-
-```sh
-python3 tools/codegen.py
-python3 tools/gen_vectors.py
-```
-
-The human-readable protocol documentation is available in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
-
----
-
-## A few protocol details worth knowing
-
-### Framed lengths include the header
-
-The framed length field includes its own header.
-
-For example:
-
-```text
-25 06 00 03
-```
-
-is an opcode `0x25` packet with a declared frame length of `6`.
-
-It is not:
-
-```text
-command 0x25
-sub-command 0x06
-```
-
-This distinction matters for variable-length commands.
-
-### Bitmap CRCs include the storage address
-
-For bitmap transfers, the CRC is calculated over the storage address followed by the file data.
-
-For example:
-
-```text
-00 1C 00 00
-```
-
-must be included before calculating the CRC.
-
-A CRC calculated over the file alone is rejected by the glasses.
-
-### Update the left arm first
-
-The two display halves are updated independently.
-
-The reliable sequence is:
-
-```text
-LEFT
-  ↓
-ACK
-  ↓
-RIGHT
-  ↓
-ACK
-```
-
-Sending both sides concurrently can result in display tearing.
-
-## Known limitations
-
-Two areas are intentionally incomplete.
-
-### Firmware updates
-
-Firmware update support is not implemented.
-
-A malformed firmware transfer can permanently brick a device, and replacement G1 hardware is no longer readily available. OpenG1 therefore does not expose firmware flashing functionality until the process can be implemented with sufficient confidence.
-
-### Navigation and teleprompter payloads
-
-The navigation and teleprompter opcodes are known and accepted by the glasses, but parts of their payload layouts are still inferred.
-
-They are therefore marked `guessed` in the protocol specification.
-
-The high-level navigation helpers currently fall back to formatted text where necessary, providing useful behavior without pretending that the undocumented layouts are fully understood.
-
-## Testing
-
-The project includes a dependency-free test runner:
-
-```sh
-python3 tests/run_tests.py
-```
-
-Filter tests with:
-
-```sh
-python3 tests/run_tests.py -k text
-```
-
-Or use pytest:
-
-```sh
-pytest
-```
-
-The test suite covers the protocol, SDK, emulator and simulator.
-
-Conformance vectors are generated from the protocol specification so that implementations can be checked against the same expected packet structures.
-
-## Project structure
-
-```text
-openg1/
-├── openg1/                 # Python SDK
-├── openg1sim/              # Simulator and emulator
-├── protocol/
-│   └── openg1.protocol.yaml
-├── examples/
-│   ├── apps/
-│   └── ...
-├── tests/
-├── tools/
-└── docs/
-```
-
-The important distinction is:
-
-```text
-Your application
-       │
-       ▼
-    OpenG1
-       │
-       ├───────────────┐
-       ▼               ▼
-  Real G1          Simulated G1
-       │               │
-      BLE          Emulator
-                       │
-                       ▼
-                    Renderer
-```
-
-The application does not need to know which backend it is running against.
+- **Firmware updates are not implemented**, on purpose: a bad transfer bricks a device that can no longer be replaced.
+- **The firmware's own navigation and teleprompter modes** are not used. Their opcodes are known, their payloads are not. `navigation.update` draws the screen as a bitmap instead; `navigation.raw()` is there for anyone decoding the real thing.
+- **Microphone audio is LC3.** The SDK reassembles it and writes `.lc3` files; decoding to PCM needs a codec you supply.
+- **Reconnection is yours.** A dropped link raises a `disconnect` event; the SDK does not reconnect behind your back.
 
 ## Contributing
 
-The most useful contributions are real protocol observations.
-
-If OpenG1 does not understand something the glasses do, run:
-
-```sh
-openg1 monitor
-```
-
-Perform the action on the glasses, then open an issue containing:
-
-1. The action you performed
-2. The relevant packet capture
-3. Whether the behavior was observed on the left, right, or both sides
-4. Firmware version
-5. Any visible result on the glasses
-
-Packet captures are considerably more useful than guesses. A previously unknown command can often be implemented once its request, acknowledgement and resulting event are known.
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+The most useful contribution is a capture from real glasses: run `npx openg1 monitor --packets --ble`, do the thing, and open an issue with the output, your firmware version and what the glasses showed. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Credits
 
-OpenG1 builds on the reverse-engineering work of the G1 community, including:
+OpenG1 builds on the reverse-engineering work of the G1 community: `even-realities/EvenDemoApp`, `JohnRThomas/EvenDemoApp`, `binarythinktank/eveng1_python_sdk`, `emingenc/even_glasses`, `emingenc/g1_flutter_blue_plus`, `hqrrr/EvenComfort`, `lohmuller/even-g1-java-sdk`, `FJiangArthur/Helix-iOS`, `radioegor146/even-utils`, `Mentra-Community/MentraOS`.
 
-* `even-realities/EvenDemoApp`
-* `JohnRThomas/EvenDemoApp`
-* `binarythinktank/eveng1_python_sdk`
-* `emingenc/even_glasses`
-* `emingenc/g1_flutter_blue_plus`
-* `hqrrr/EvenComfort`
-* `lohmuller/even-g1-java-sdk`
-* `FJiangArthur/Helix-iOS`
-* `radioegor146/even-utils`
-* `Mentra-Community/MentraOS`
-
-OpenG1 would not exist without that prior work.
-
-## Documentation
-
-| Document                                         | Description                            |
-| ------------------------------------------------ | -------------------------------------- |
-| [`docs/SIMULATOR_APP.md`](docs/SIMULATOR_APP.md) | Develop and test without the hardware  |
-| [`docs/BUILDING_APPS.md`](docs/BUILDING_APPS.md) | Build applications with OpenG1         |
-| [`docs/SIMULATOR.md`](docs/SIMULATOR.md)         | Simulator architecture and API         |
-| [`docs/TESTING.md`](docs/TESTING.md)             | SDK and application testing            |
-| [`docs/PROTOCOL.md`](docs/PROTOCOL.md)           | G1 wire protocol and confidence levels |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md)             | Protocol captures and contributions    |
+The bitmap fonts are rasterised from DejaVu Sans (Bitstream Vera licence).
 
 ## License
 
-MIT License.
-
-OpenG1 is an independent open-source project and is **not affiliated with or endorsed by Even Realities**.
+MIT.

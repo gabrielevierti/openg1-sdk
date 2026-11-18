@@ -28,7 +28,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # The SDK lives at the repository root in a Python-only checkout and under
 # bindings/python in the full one. Try both rather than caring which.
-for _candidate in (ROOT, ROOT / "bindings" / "python"):
+for _candidate in (ROOT / "python", ROOT):
     if (_candidate / "openg1").is_dir():
         sys.path.insert(0, str(_candidate))
         break

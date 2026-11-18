@@ -1,6 +1,61 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 2.0.0
+
+A rebuild around one goal: the same API on a computer, on Android and on
+iPhone, with a simulator good enough to develop against.
+
+### Added
+
+- **TypeScript SDK** (`openg1`): the protocol, session and `G1` API in pure
+  TypeScript with no dependencies. Passes the same conformance vectors as the
+  Python SDK, plus a parity fixture generated from it (command builders, text
+  layout, dithering, BMP encoding, transfer chunking).
+- **Transports** for Web Bluetooth, React Native (`react-native-ble-plx`),
+  Capacitor (`@capacitor-community/bluetooth-le`), Node (`noble`), WebSocket
+  and TCP. Tested against library-shaped stand-ins; not yet on hardware.
+- **Canvas**: lines, shapes, arcs, proportional text in five bitmap fonts,
+  wrapped text boxes, progress bars, arrows. `display.draw`, `display.image`.
+- **Simulator rewritten** (`openg1/sim`): emulated firmware per arm, a
+  renderer, wearer input and diagnostics, as a browser-safe library. A
+  self-contained web page with a playground and a real-glasses mode; a server
+  with WebSocket, HTTP and TCP endpoints; live reload for app files.
+- **Hub** (`openg1 hub`): the SDK as a JSON API over HTTP, server-sent events
+  and WebSocket, including screens described as drawing operations.
+- **Navigation drawn as a bitmap**: arrow, distance, road, speed against the
+  limit.
+- `App` / `Launcher` framework, `session.exclusive`, `session.idle`,
+  `describePacket`.
+
+- **Companion app** (`app/`): one Capacitor codebase for iPhone and Android.
+  Connection with a live preview, its own navigator on OpenStreetMap data
+  (search, car/bike/foot routes, speed limits, rerouting), teleprompter, notes,
+  mini-app launcher, glasses settings and calibration. Tested in a browser
+  against the simulator; native builds not yet compiled.
+
+### Changed
+
+- The repository is now a Node package at the root; the Python SDK moved to
+  `python/` and keeps working, including against the new simulator
+  (`OPENG1_SIMULATOR=1`).
+- `display.text` (TypeScript) sends to both arms, left first, as the spec and
+  the official app do. The Python SDK still sends text to the left arm only.
+- Simulator text is drawn in a proportional font and judged with the SDK's own
+  metrics, instead of a fixed 5×7 cell font.
+
+### Fixed
+
+- Text on a link without MTU negotiation: the per-packet budget had a floor of
+  16 bytes, which overflowed a 20-byte write. Both SDKs.
+- The dependency-free Python test runner skipped parametrised cases when
+  pytest was installed.
+
+### Removed
+
+- Committed `__pycache__` and `.DS_Store` files; README references to examples
+  and documents that did not exist.
+
+## 1.0 — the Python SDK
 
 First release: the Python SDK and the visual simulator.
 

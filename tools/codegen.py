@@ -539,12 +539,11 @@ def gen_ts(spec) -> str:
 #: Python-only checkout and in a full multi-language one — a missing binding
 #: is not an error, it is just a binding you do not have.
 TARGETS = {
-    "openg1/_generated.py": gen_python,
-    "bindings/python/openg1/_generated.py": gen_python,
+    "python/openg1/_generated.py": gen_python,
+    "src/generated.ts": gen_ts,
     "bindings/c/include/openg1/og1_opcodes.h": gen_c_header,
     "bindings/c/src/og1_opcodes.c": gen_c_source,
     "bindings/java/src/main/java/dev/openg1/protocol/Generated.java": gen_java,
-    "bindings/typescript/src/generated.ts": gen_ts,
 }
 
 

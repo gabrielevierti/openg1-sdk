@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenG1 Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!--OPENG1_SERVER-->
+<style>
+/* Layout idea: a workbench. The lens is the one dark object on it, full width
+   on top; under it, what the wearer does (left) and what the app does (right). */
+:root {
+  --bench: #eef0ee;
+  --surface: #fbfcfb;
+  --ink: #17201c;
+  --ink-soft: #55625c;
+  --line: #d3d9d5;
+  --touch: #b8480f;
+  --touch-soft: #f6e3d7;
+  --alert: #a5281b;
+  --alert-soft: #f7dfdb;
+  --lens: #07100c;
+  --hud: #6effa0;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bench: #121715;
+    --surface: #1a211e;
+    --ink: #e6ece8;
+    --ink-soft: #9aa8a1;
+    --line: #2e3833;
+    --touch: #f0884c;
+    --touch-soft: #3a2619;
+    --alert: #f08a7c;
+    --alert-soft: #3d1f1b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bench: #121715;
+  --surface: #1a211e;
+  --ink: #e6ece8;
+  --ink-soft: #9aa8a1;
+  --line: #2e3833;
+  --touch: #f0884c;
+  --touch-soft: #3a2619;
+  --alert: #f08a7c;
+  --alert-soft: #3d1f1b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bench);
+  color: var(--ink);
+  font: 15px/1.5 var(--font-body);
+  -webkit-text-size-adjust: 100%;
+}
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+  display: grid;
+  gap: 16px;
+}
+h1, h2 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: 22px; letter-spacing: 0.01em; }
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+p { margin: 0; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--touch); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* -- header ---------------------------------------------------------------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.modes { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.modes button {
+  border: 0; background: none; padding: 7px 14px; font-weight: 500; color: var(--ink-soft);
+  border-right: 1px solid var(--line);
+}
+.modes button:last-child { border-right: 0; }
+.modes button[aria-selected="true"] { background: var(--ink); color: var(--surface); }
+
+/* -- the lens --------------------------------------------------------------- */
+.stage { display: grid; gap: 10px; }
+.lens {
+  --hidden-top: 0%;
+  --hidden-bottom: 0%;
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: zoom-in;
+  /* What you would be looking at: a street at dusk, out of focus. */
+  background:
+    radial-gradient(60% 90% at 78% 30%, #24382f 0%, transparent 70%),
+    radial-gradient(40% 70% at 18% 75%, #2a2a20 0%, transparent 70%),
+    linear-gradient(180deg, #0c1a16 0%, var(--lens) 60%, #050a08 100%);
+  padding: clamp(10px, 3vw, 26px) clamp(6px, 3vw, 40px);
+}
+.lens.zoomed { cursor: zoom-out; overflow-x: auto; }
+.lens.zoomed .frame { width: 1152px; max-width: none; }
+.frame { position: relative; width: 100%; max-width: 1152px; margin: 0 auto; aspect-ratio: 576 / 136; }
+.frame canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  filter: drop-shadow(0 0 3px rgba(110, 255, 160, 0.55));
+}
+.frame::before, .frame::after {
+  /* Rows this pair cannot show, shaded so a layout that uses them looks wrong here too. */
+  content: ""; position: absolute; left: 0; right: 0; pointer-events: none;
+  background: repeating-linear-gradient(135deg, rgba(240, 136, 76, 0.28) 0 6px, rgba(240, 136, 76, 0.08) 6px 12px);
+}
+.frame::before { top: 0; height: var(--hidden-top); }
+.frame::after { bottom: 0; height: var(--hidden-bottom); }
+.frame { outline: 1px dashed rgba(110, 255, 160, 0.16); outline-offset: 2px; }
+#lens-note {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  color: #8fa89b; font-size: 14px; padding: 0 16px; pointer-events: none;
+}
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  font: 500 12px/1 var(--font-mono); padding: 6px 9px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); white-space: nowrap;
+}
+.pill[data-state="on"] { color: var(--ink); border-color: var(--ink-soft); }
+.pill[data-state="on"]::before { content: "● "; color: #2f9e5b; }
+.pill[data-state="warn"] { color: var(--alert); border-color: var(--alert); background: var(--alert-soft); }
+#warnings {
+  margin: 0; padding: 10px 12px 10px 30px; border-radius: 8px;
+  background: var(--alert-soft); color: var(--alert); font-size: 13.5px; border-left: 4px solid var(--alert);
+}
+
+/* -- columns ---------------------------------------------------------------- */
+.columns { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 900px) { .columns { grid-template-columns: minmax(300px, 380px) 1fr; } }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px; display: grid; gap: 12px; min-width: 0;
+}
+.stack { display: grid; gap: 16px; min-width: 0; }
+.hint { color: var(--ink-soft); font-size: 13.5px; max-width: 65ch; }
+
+/* -- wearer ----------------------------------------------------------------- */
+.touchbars { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.touchbar {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bench);
+  padding: 18px 10px; display: grid; gap: 2px; justify-items: center;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  transition: background 0.08s, transform 0.08s;
+}
+.touchbar strong { font: 600 15px var(--font-display); letter-spacing: 0.03em; }
+.touchbar small { color: var(--ink-soft); font-size: 12px; }
+.touchbar.pressed { background: var(--touch-soft); border-color: var(--touch); transform: scale(0.98); }
+.touchbar.holding { background: var(--touch); color: #fff; }
+.touchbar.holding small { color: #fff; }
+.toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggle, .action {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 12px; font-weight: 500;
+}
+.toggle[aria-pressed="true"] { background: var(--touch-soft); border-color: var(--touch); color: var(--touch); }
+.action.primary { background: var(--touch); border-color: var(--touch); color: #fff; }
+.action:disabled { opacity: 0.5; cursor: not-allowed; }
+.field { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-size: 14px; }
+.field output { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
+input[type="range"] { width: 100%; accent-color: var(--touch); }
+.safe { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 14px; }
+.safe input { width: 5.5em; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.disabled .touchbars, .disabled .toggles, .disabled .field { opacity: 0.4; pointer-events: none; }
+details > summary { cursor: pointer; font-weight: 500; }
+details[open] > summary { margin-bottom: 10px; }
+
+/* -- playground -------------------------------------------------------------- */
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row select { flex: 1 1 220px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+#code {
+  width: 100%; min-height: 300px; resize: vertical; tab-size: 2;
+  font: 13px/1.55 var(--font-mono); padding: 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bench); color: var(--ink); white-space: pre; overflow: auto;
+}
+#log {
+  list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto;
+  font: 12px/1.5 var(--font-mono); border: 1px solid var(--line); border-radius: 8px; background: var(--bench);
+}
+#log:empty::after { content: "Packets and events appear here."; display: block; padding: 10px 12px; color: var(--ink-soft); }
+#log li { display: grid; grid-template-columns: 4.6em 1fr; column-gap: 8px; padding: 3px 10px; border-bottom: 1px solid var(--line); }
+#log li:last-child { border-bottom: 0; }
+#log .tag { color: var(--ink-soft); }
+#log .text { overflow-wrap: anywhere; }
+#log .hex { grid-column: 2; color: var(--ink-soft); overflow-wrap: anywhere; }
+#log .log-event .tag, #log .log-rx .tag { color: var(--touch); }
+#log .log-error { color: var(--alert); }
+#log .log-out .text { font-weight: 500; }
+.split { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.linkish { border: 0; background: none; color: var(--ink-soft); text-decoration: underline; padding: 0; font-size: 13px; }
+footer { color: var(--ink-soft); font-size: 13px; }
+footer code, .hint code { font: 12.5px var(--font-mono); background: var(--bench); padding: 1px 5px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .touchbar { transition: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1>OpenG1 Simulator</h1>
+    <div class="modes" role="tablist" aria-label="Where the glasses are">
+      <button type="button" role="tab" data-mode="simulator" aria-selected="true">In this tab</button>
+      <button type="button" role="tab" data-mode="server" aria-selected="false">Server</button>
+      <button type="button" role="tab" data-mode="glasses" aria-selected="false">Real glasses</button>
+    </div>
+  </header>
+
+  <section class="stage" aria-label="Display">
+    <div class="lens" id="lens" title="Click to zoom to 2×">
+      <div class="frame">
+        <canvas id="panel" width="576" height="136" aria-label="The 576 by 136 pixel panel as the wearer sees it"></canvas>
+        <p id="lens-note"></p>
+      </div>
+    </div>
+    <div class="pills" aria-label="Status">
+      <span class="pill" id="pill-left">L</span>
+      <span class="pill" id="pill-right">R</span>
+      <span class="pill" id="pill-sync">Lenses match</span>
+      <span class="pill" id="pill-brightness">Brightness</span>
+      <span class="pill" id="pill-mic">Mic off</span>
+      <span class="pill" id="pill-silent">Sound on</span>
+    </div>
+    <ul id="warnings" hidden></ul>
+  </section>
+
+  <div class="columns">
+    <div class="stack">
+      <section class="card" id="bluetooth" hidden>
+        <h2>Connect</h2>
+        <button type="button" class="action primary" id="bt-choose">Choose the first arm</button>
+        <p class="hint" id="bt-status"></p>
+      </section>
+
+      <section class="card" id="wearer">
+        <h2>Wearer</h2>
+        <div class="touchbars">
+          <button type="button" class="touchbar" id="tb-left"><strong>Left touch bar</strong><small>hold = assistant</small></button>
+          <button type="button" class="touchbar" id="tb-right"><strong>Right touch bar</strong><small>tap · double · triple</small></button>
+        </div>
+        <p class="hint" id="wearer-hint"></p>
+        <div class="toggles">
+          <button type="button" class="toggle" id="look" aria-pressed="false">Look up</button>
+          <button type="button" class="toggle" id="wear" aria-pressed="true">Wearing</button>
+          <button type="button" class="toggle" id="charge" aria-pressed="false">Charging</button>
+        </div>
+        <label class="field" for="battery">Battery
+          <input type="range" id="battery" min="0" max="100" value="87">
+          <output id="battery-out" for="battery">87%</output>
+        </label>
+        <details>
+          <summary>Rows you cannot see</summary>
+          <div class="safe">
+            <label for="safe-top">Top <input type="number" id="safe-top" min="0" max="100" value="0"></label>
+            <label for="safe-bottom">Bottom <input type="number" id="safe-bottom" min="0" max="100" value="0"></label>
+          </div>
+          <p class="hint" id="safe-note" style="margin-top:8px"></p>
+        </details>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card">
+        <div class="split"><h2>Playground</h2><span class="hint">Ctrl/⌘ + Enter runs</span></div>
+        <div class="row">
+          <label for="preset" hidden>Example</label>
+          <select id="preset" aria-label="Example"></select>
+          <button type="button" class="action primary" id="run">Run</button>
+          <button type="button" class="action" id="stop" hidden>Stop</button>
+        </div>
+        <p class="hint" id="preset-about"></p>
+        <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Program"></textarea>
+        <p class="hint">In scope: <code>g1</code>, <code>sim</code>, <code>signal</code>, <code>sleep(ms)</code>, <code>log()</code> and <code>openg1</code>. The same code runs on real glasses.</p>
+      </section>
+
+      <section class="card">
+        <div class="split"><h2>Traffic</h2><button type="button" class="linkish" id="clear-log">Clear</button></div>
+        <ol id="log" aria-live="off"></ol>
+      </section>
+    </div>
+  </div>
+
+  <footer>Text screens are drawn in a stand-in font, since the firmware's own is not published; bitmap screens are pixel-exact. Not affiliated with Even Realities.</footer>
+</div>
+<script>/*OPENG1_BUNDLE*/</script>
+</body>
+</html>

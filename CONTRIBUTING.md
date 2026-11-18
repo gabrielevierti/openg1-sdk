@@ -1,33 +1,46 @@
 # Contributing
 
-The protocol was pieced together from Even's demo app, community captures and
-a lot of patience. Corrections from anyone with a pair on their face are the
-most valuable thing this project can receive.
+The protocol was pieced together from Even's demo app, community captures and a lot of patience. Corrections from anyone with a pair on their face are the most valuable thing this project can receive.
 
 ## Running the tests
 
 ```sh
-python3 tests/run_tests.py        # no dependencies, no pytest needed
-python3 tests/run_tests.py -k bmp # filter
-pytest                            # also works
+npm install
+npm test                 # the TypeScript SDK, simulator, server, transports (Node 22.18+)
+npm run test:python      # the Python SDK, no dependencies needed
+npm run typecheck
 ```
 
-The suite runs with nothing installed, and it should stay that way. Anything
-needing Pillow or bleak belongs behind a skip.
+`npm test` runs the TypeScript sources directly, which needs Node 22.18 or newer. The built package runs on Node 20.
 
 ## Working without hardware
 
 ```sh
-python3 -m openg1sim              # the simulator window
+npx openg1 sim                      # the simulator page and endpoints
+npx openg1 sim examples/04-app.ts   # an app with live reload
 ```
 
-See [`docs/SIMULATOR_APP.md`](docs/SIMULATOR_APP.md). Everything in this repo
-was built against the simulator, including this sentence.
+Everything in this repository was built against the simulator. That is also its limit: see "What has been tested" in the README before trusting an adapter on a new platform.
+
+## Captures from real glasses
+
+```sh
+npx openg1 monitor --packets --ble      # or: openg1 monitor, with the Python SDK
+```
+
+Do the thing on the glasses, then open an issue with:
+
+1. what you did;
+2. the lines the monitor printed;
+3. which arm it came from;
+4. the firmware version (`npx openg1 info --ble`);
+5. what the glasses showed.
+
+Unknown packets are printed, not hidden. A previously unknown command can usually be implemented once its request, acknowledgement and resulting event are known.
 
 ## Protocol changes
 
-Every command lives in [`protocol/openg1.protocol.yaml`](protocol/openg1.protocol.yaml)
-with a confidence marker:
+Every command lives in [`protocol/openg1.protocol.yaml`](protocol/openg1.protocol.yaml) with a confidence marker:
 
 | | |
 | --- | --- |
@@ -35,28 +48,29 @@ with a confidence marker:
 | `observed` | seen in the wild, purpose inferred |
 | `guessed` | plausible, untested — treat as a hypothesis |
 
-The Python enums are generated from that file, so change the YAML and
-regenerate rather than editing `_generated.py`:
+Constants for both SDKs are generated from that file. Change the YAML, then:
 
 ```sh
-python3 tools/codegen.py
+npm run codegen                  # src/generated.ts, python/openg1/_generated.py, fonts
+python3 tools/gen_vectors.py     # protocol/vectors.json
+python3 tools/gen_parity.py      # test/fixtures/python-parity.json
 ```
 
-**Promoting something to `confirmed` needs evidence.** A capture, or a clear
-description of what the glasses did. "It did not error" is not evidence — the
-firmware acknowledges plenty of things it then ignores.
+(These need Python with PyYAML and Pillow.) Both SDKs must still pass `protocol/vectors.json`, and the TypeScript one must still match `test/fixtures/python-parity.json`.
+
+**Promoting something to `confirmed` needs evidence**: a capture, or a clear description of what the glasses did. "It did not error" is not evidence — the firmware acknowledges plenty of things it then ignores.
 
 ## Style
 
-- Explain *why* in comments, not *what*. The code says what it does.
+- Explain *why* in comments, not *what*.
 - Prefer a test that would have caught the bug over one that covers the line.
-- Keep `openg1` free of anything that imports a radio or a GUI toolkit;
-  `openg1sim` is where development tooling lives.
+- `src/` outside `server/`, `cli.ts` and `transports/tcp.ts` must stay free of Node APIs: it runs in browsers and on phones.
+- Transports take their BLE library as an argument and never import it.
+- The TypeScript is written so Node can run it without a build step: no enums, no parameter properties, `.ts` import extensions.
 
 ## Things that would help most
 
-- Captures from real hardware for anything marked `guessed`, especially the
-  navigation and teleprompter layouts.
-- Calibration numbers from other people's glasses — how many rows are hidden
-  on your pair, and at which virtual-screen height.
-- Apps. `docs/BUILDING_APPS.md` is the guide; small and sharp beats large.
+- Running any transport against real glasses and reporting what happened — MTU, timing, anything that needed changing.
+- Captures for anything marked `guessed`, especially the firmware's navigation and teleprompter payloads.
+- The real advance widths of the firmware font, to replace the estimate in `src/text.ts`.
+- Calibration numbers: how many rows are hidden on your pair.

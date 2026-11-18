@@ -1,0 +1,35 @@
+{
+  "name": "openg1",
+  "version": "2.0.0",
+  "description": "Open SDK and simulator for Even Realities G1 smart glasses — one API for PC, Android and iPhone",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "bin": { "openg1": "dist/cli.js" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./sim": { "types": "./dist/sim/index.d.ts", "default": "./dist/sim/index.js" },
+    "./server": { "types": "./dist/server/index.d.ts", "default": "./dist/server/index.js" },
+    "./transports/*": { "types": "./dist/transports/*.d.ts", "default": "./dist/transports/*.js" },
+    "./browser": { "types": "./dist/browser.d.ts", "default": "./dist/openg1.browser.js" }
+  },
+  "files": ["dist", "protocol", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node tools/build-web.mjs",
+    "prepare": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.web.json",
+    "test": "node --test \"test/*.test.ts\"",
+    "test:python": "python3 python/tests/run_tests.py",
+    "sim": "node src/cli.ts sim",
+    "codegen": "python3 tools/codegen.py && python3 tools/gen_font.py"
+  },
+  "dependencies": { "ws": "^8.18.0" },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}

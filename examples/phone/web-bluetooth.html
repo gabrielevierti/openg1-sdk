@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!--
+  Real glasses from a web page: Chrome or Edge on Android or a computer; on
+  iPhone, a Web Bluetooth browser such as Bluefy. Serve this over https or
+  from localhost, next to dist/openg1.browser.js:
+
+      npm run build && npx http-server . -p 8080
+      open http://localhost:8080/examples/phone/web-bluetooth.html
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>openg1 over Web Bluetooth</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; margin: 24px auto; max-width: 34rem; padding: 0 16px; }
+  button, input { font: inherit; padding: 10px 14px; }
+  input { width: 100%; box-sizing: border-box; margin: 12px 0; }
+  #status { color: #555; min-height: 3em; }
+</style>
+</head>
+<body>
+<h1>openg1 over Web Bluetooth</h1>
+<p id="status">Close the official Even app, then choose each arm in turn.</p>
+<button id="choose">Choose an arm</button>
+<input id="message" value="ciao" aria-label="Message" disabled>
+<button id="send" disabled>Show on the glasses</button>
+
+<script type="module">
+  import { G1, WebBluetoothPairing } from "../../dist/openg1.browser.js";
+
+  const pairing = new WebBluetoothPairing();
+  const status = document.getElementById("status");
+  let g1;
+
+  // The browser shows its device chooser only in response to a tap, and each
+  // arm is its own device: so this handler runs twice.
+  document.getElementById("choose").onclick = async (event) => {
+    try {
+      const arm = await pairing.request();
+      status.textContent = `Chosen ${arm.name}.` + (pairing.complete ? " Connecting…" : ` Now choose the ${pairing.missing} arm.`);
+      if (!pairing.complete) return;
+
+      g1 = await G1.connect(pairing.pair());
+      const battery = await g1.info.battery();
+      status.textContent = `Connected. Battery: left ${battery.left}%, right ${battery.right}%.`;
+      event.target.disabled = true;
+      document.getElementById("message").disabled = false;
+      document.getElementById("send").disabled = false;
+
+      g1.on("touch", (e) => (status.textContent = `${e.arm} arm: ${e.gesture}`));
+      g1.on("disconnect", () => (status.textContent = "The glasses disconnected. Reload to reconnect."));
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  };
+
+  document.getElementById("send").onclick = () => g1.display.text(document.getElementById("message").value);
+</script>
+</body>
+</html>

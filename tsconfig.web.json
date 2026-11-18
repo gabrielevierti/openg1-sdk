@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "types": [], "rootDir": "src" },
+  "include": ["src/web", "src/browser.ts"],
+  "exclude": []
+}
